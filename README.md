@@ -28,6 +28,7 @@ Please note that some of these tips might not be relevant for all RDBMSs.
 - [You can (but shouldn't always) `GROUP BY` column position](#you-can-but-shouldnt-always-group-by-column-position)
 - [Create a grand total with `GROUP BY ROLLUP`](#create-a-grand-total-with-group-by-rollup)
 - [Use `EXCEPT` to find the difference between two tables](#use-except-to-find-the-difference-between-two-tables)
+- [Transform relational data to JSON with aggregation functions](#transform-relational-data-to-json-with-aggregation-functions)
 
 ### Performance
 
@@ -452,6 +453,53 @@ FROM employees
 ;
 
 ```
+
+-----
+### Transform relational data to JSON with aggregation functions
+
+Use JSON functions like `json_agg` and `json_build_object` to transform relational data into structured JSON, perfect for APIs or nested reporting.
+
+```SQL
+-- Basic aggregation into JSON array:
+SELECT 
+dept_no
+, json_agg(employee_name) AS employees
+FROM employees
+GROUP BY dept_no
+;
+
+-- Create nested JSON objects:
+SELECT 
+dept_no
+, json_agg(
+    json_build_object(
+        'name', employee_name,
+        'salary', salary,
+        'hire_date', hire_date
+    )
+) AS employee_details
+FROM employees
+GROUP BY dept_no
+;
+
+-- Complex nested structure with ordering:
+SELECT 
+json_build_object(
+    'department', dept_no,
+    'total_salary', SUM(salary),
+    'employees', json_agg(
+        json_build_object(
+            'name', employee_name,
+            'salary', salary
+        ) ORDER BY salary DESC
+    )
+) AS department_summary
+FROM employees
+GROUP BY dept_no
+;
+```
+
+Note: JSON functions are available in PostgreSQL, MySQL 5.7+, and most modern databases, but syntax may vary between RDBMSs.
 
 ## Performance
 
