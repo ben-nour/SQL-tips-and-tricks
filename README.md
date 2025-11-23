@@ -352,15 +352,21 @@ ORDER BY 2 DESC
 
 -----
 ### Create a grand total with `GROUP BY ROLLUP`
-Creating a grand total (or sub-totals) is possible thanks to `GROUP BY ROLLUP`.
+Creating a grand total (and/or sub-total) row is possible thanks to `GROUP BY ROLLUP`.
 
 For example, if you've aggregated a company's employees salary per department you 
-can use `GROUP BY ROLLUP` to create a grand total that sums up the aggregated
-`dept_salary` column.
+can use `GROUP BY ROLLUP` to create a grand total that applies your aggregate functions as if 
+the specified grouping hadn't been applied (thus creating a grand total row).
+
+The [Transact-SQL documentation](https://learn.microsoft.com/en-us/sql/t-sql/queries/select-group-by-transact-sql?view=sql-server-ver17) explains `GROUP BY ROLLUP` well:
+
+_"Creates a group for each combination of column expressions. In addition, it 'rolls up' the results into subtotals and grand totals. To do this, it moves from right to left decreasing the number of column expressions over which it creates groups and the aggregation(s)."_
+
+You may want to apply `COALESCE`, as below, to ensure the total row is labelled as such.
 
 ```SQL
 SELECT 
-COALESCE(dept_no, 'Total') AS dept_no
+COALESCE(dept_no, 'Total') AS department_number
 , SUM(salary) AS dept_salary
 FROM employees
 GROUP BY ROLLUP(dept_no)
