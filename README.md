@@ -33,6 +33,7 @@ Please note that some of these tips might not be relevant for all RDBMSs.
 
 - [`NOT EXISTS` is faster than `NOT IN` if your column allows `NULL`](#not-exists-is-faster-than-not-in-if-your-column-allows-null)
 - [Implicit casting will slow down (or break) ](#implicit-casting-will-slow-down-or-break-your-query)
+- [CTEs cannot be indexed](#ctes-cannot-be-indexed)
 
 ### Common mistakes
 
@@ -501,6 +502,50 @@ WHERE TRY_TO_NUMBER(video_id) = 200050
 ```
 
 \* Note that this depends on the size of the dataset being operated on. 
+
+### CTEs cannot be indexed
+
+A common table expression is great for readability but can’t be indexed so is very slow. 
+
+```SQL
+WITH Subset AS 
+ (SELECT * FROM Sales WHERE SaleDate > DATEADD(DAY,-7,GETDATE()))
+```
+
+#### Temp Tables can be a good alternative
+
+Use temp tables instead of a CTE clause, because you can then index them. Full list of pros and cons [here](https://dba.stackexchange.com/questions/13112/whats-the-difference-between-a-cte-and-a-temp-table)
+
+```SQL
+-- Drop the table if it already exists
+IF OBJECT_ID('tempDB..#Subset', 'U') IS NOT NULL
+ DROP TABLE #Subset
+GO
+
+--create temp table
+CREATE TABLE #Subset (columnname1 datatype nullable, ......)
+INSERT INTO #Subset
+ SELECT *
+ FROM Sales
+ WHERE SaleDate > DATEADD(DAY,-7,GETDATE())
+
+--create index
+CREATE /*UNIQUE and/or CLUSTERED*/ INDEX IX_IndexName ON #Subset (CustomerID DESC) /*Change sort order as needed*/
+```
+
+WATCH OUT! The following syntax doesn’t allow you to assign data types, so SQL guesses. And it sometimes guesses wrong
+```SQL
+SELECT * 
+ INTO #Subset
+ FROM Sales WHERE SaleDate > DATEADD(DAY,-7,GETDATE())
+```
+
+WATCH OUT! The following syntax looks like a temp table, but it’s actually creating a table variable in memory which can be even worse!
+```SQL
+DECLARE @Subset TABLE (columnname1 datatype nullable, ......)
+ INSERT INTO @Subset (columnname1, ........)
+ SELECT * FROM Sales WHERE SaleDate > DATEADD(DAY,-7,GETDATE())
+```
 
 ## Common mistakes
 
